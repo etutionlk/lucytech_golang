@@ -13,13 +13,15 @@ type Page struct {
 }
 
 func saveHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/save/"):]
 	urlInput := r.FormValue("urlInput")
 
-	fmt.Println(urlInput, title)
-	// p := &Page{Title: title, Body: []byte(body)}
-	// p.save()
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+	fmt.Println(urlInput)
+	http.Redirect(w, r, "/result/", http.StatusFound)
+}
+
+func resultHandler(w http.ResponseWriter, r *http.Request) {
+
+	http.Redirect(w, r, "/result/", http.StatusFound)
 }
 
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
@@ -37,12 +39,13 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 
 func main() {
 
-	http.HandleFunc("/save/", saveHandler)
-
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "ui/templates/index.html")
 	})
+
+	http.HandleFunc("/save/", saveHandler)
+	http.HandleFunc("/result/", resultHandler)
 
 	log.Println("Server started at http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
