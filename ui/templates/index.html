@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Page Analyzer</title>
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center">Web Page Analyzer</h2>
+        <form id="analyzeForm" class="mt-4" action="/save/" method="POST">
+            <div class="mb-3">
+                <label for="urlInput" class="form-label">Enter URL:</label>
+                <input type="url" class="form-control" id="urlInput" name="urlInput" 
+                placeholder="https://example.com" required value="https://go.dev/doc/articles/wiki/">
+            </div>
+            <button type="submit" class="btn btn-primary">Analyze</button>
+        </form>
+    </div>
+</body>
+</html>
