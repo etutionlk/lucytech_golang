@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -16,7 +17,7 @@ type Site struct {
 	HeadingCount      map[string]int
 	InternalLinks     int
 	ExternalLinks     int
-	InaccessibleLinks int
+	InaccessibleLinks []string
 	ContainsLoginForm bool
 }
 
@@ -62,30 +63,105 @@ func (s *Site) getPageTitle(siteContent string) {
 	if err != nil {
 		fmt.Println("Error parsing HTML")
 	}
-	c := traverse(doc)
-	fmt.Println(c)
+	s.PageTitle = traverse(doc)
 }
 
-func traverse(n *html.Node) {
+func traverse(n *html.Node) string {
+	var title string
+
 	if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
-		return n.FirstChild.Data
+		title = n.FirstChild.Data
+		return title
 	}
+
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		traverse(c)
+		title = traverse(c)
+		if title != "" {
+			return title
+		}
 	}
 
+	return ""
 }
 
-func (s *Site) getHeadingCount() {
-	// code
+func (s *Site) getHeadingCount(siteContent string) {
+	doc, err := html.Parse(strings.NewReader(siteContent))
+	if err != nil {
+		fmt.Println("Error parsing HTML")
+	}
+
+	headingCount := make(map[string]int)
+
+	var traverse func(*html.Node)
+	traverse = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			switch n.Data {
+			case "h1", "h2", "h3", "h4", "h5", "h6":
+				headingCount[n.Data]++
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			traverse(c)
+		}
+	}
+
+	traverse(doc)
+
+	tageCount := make(map[string]int)
+	for tag, count := range headingCount {
+		tageCount[tag] = count
+	}
+
+	s.HeadingCount = tageCount
+
 }
 
-func (s *Site) getAllLinks() {
-	// code
+func (s *Site) getAllLinks(siteContent string) []string {
+	doc, err := html.Parse(strings.NewReader(siteContent))
+	if err != nil {
+		fmt.Println("Error parsing HTML:", err)
+		return []string{""}
+	}
+
+	var links []string
+
+	var traverse func(*html.Node)
+	traverse = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, attr := range n.Attr {
+				if attr.Key == "href" {
+					links = append(links, attr.Val)
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			traverse(c)
+		}
+	}
+
+	traverse(doc)
+
+	return links
+
 }
 
-func (s *Site) getInaccessibleLinks() {
-	// code
+func (s *Site) getInaccessibleLinks(links []string) {
+	var badLinks []string
+
+	client := http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	for _, link := range links {
+		resp, err := client.Head(link)
+		if err != nil || resp.StatusCode >= 400 {
+			badLinks = append(badLinks, link)
+			continue
+		}
+		resp.Body.Close()
+	}
+
+	s.InaccessibleLinks = badLinks
 }
 
 func (s *Site) isContainsLoginForm() {
@@ -93,7 +169,9 @@ func (s *Site) isContainsLoginForm() {
 }
 
 func main() {
-	url := "https://example.com"
+	// url := "https://go.dev/doc/tutorial/getting-started"
+
+	url := "https://go.dev/doc/tutorial/getting-started#install"
 
 	s := Site{URL: url}
 
@@ -106,5 +184,13 @@ func main() {
 	// fmt.Println(s.HTMLVersion)
 
 	s.getPageTitle(content)
+	s.getHeadingCount(content)
+
+	links := s.getAllLinks(content)
+	// fmt.Println(links)
+
+	s.getInaccessibleLinks(links)
+
+	fmt.Println(s)
 
 }
